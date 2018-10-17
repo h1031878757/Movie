@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:tx="http://www.springframework.org/schema/tx"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:task="http://www.springframework.org/schema/task"
+		xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+							http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.2.xsd
+							http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+							http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.2.xsd
+							http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd">
+	<context:component-scan base-package="com.movie"></context:component-scan>
+		<!-- 读取properties文件所在的路径 -->
+		<context:property-placeholder location="classpath:config/jdbc_oracle.properties"/>
+			<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+			   <property name="driverClassName" value="${driver}"></property>
+			   <property name="url" value="${dburl}"></property>
+			   <property name="username" value="${name}"></property>
+			   <property name="password" value="${pwd}"></property>
+			   <!-- 数据库连接池在初始的时候给的连接数 -->
+			   <property name="initialSize" value="4"></property>
+			   <!-- 数据库的空闲的时候的最小的连接数 -->
+			   <property name="minIdle" value="4"></property>
+			   <!-- 数据库空闲的最大的连接数 -->
+			   <property name="maxIdle" value="8"></property>
+			   <!-- 数据库最大连接数 -->
+			   <property name="maxTotal" value="20"></property>
+			</bean>
+			<!-- sqlsessionFactory -->
+			<bean id="sqlSession" class="org.mybatis.spring.SqlSessionFactoryBean">
+				<!-- 配置别名  默认的别名   类名的首字母小写-->
+				<property name="typeAliasesPackage" value="com.movie.entity"></property>
+				<!-- 吧数据源加入到sqlsession里面  -->
+			   <property name="dataSource" ref="dataSource"></property>
+			   <!-- 扫描sql文件 -->
+			   <property name="mapperLocations" value="classpath:com/movie/mapper/*.xml"></property>
+			</bean>
+
+			<!-- 扫描一下mybatis里面的接口 -->
+			<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+			  <property name="basePackage" value="com.movie.dao"></property>
+			</bean>
+
+			<!--文件上传 -->
+			<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+			  <!-- 文件上传的最大的值  10m  单位是字节  -->
+			  <property name="maxUploadSize" value="10240000"></property>
+			</bean>
+			
+			<!-- 配置事务管理器 -->
+			<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+				<property name="dataSource" ref="dataSource"></property>
+			</bean> 
+			<!--  事务的声明   -->
+			<tx:advice id="txadvice" transaction-manager="transactionManager">
+				<tx:attributes>
+				<!-- 事务配置在哪些方法上面  -->
+				<tx:method name="update*" read-only="false" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+				</tx:attributes>
+			</tx:advice>
+			
+			<!--  配置一下需要参与事务的类 -->
+ 			<aop:config>
+	 			<!-- 哪一个地方需要配置事务
+	 					第一个* 代表返回值
+	 					第二个* 代表类名
+						第三个* 代表的是方法名
+						（）里面的..代表的是参数的个数和类型  -->
+				<aop:pointcut expression="execution(* com.movie.service.impl.*.*(..))" id="allMthodAdvice1"/>
+	 			<aop:advisor advice-ref="txadvice" pointcut-ref="allMthodAdvice1"/>
+ 			</aop:config> 
+ 
+			<!--  <task:scheduled-tasks>
+			    <task:scheduled ref="userServiceImpl" method="testjob" cron="0/5 * * * * * "/>
+			 </task:scheduled-tasks> -->
+			 <task:annotation-driven/>
+ 
+</beans>
